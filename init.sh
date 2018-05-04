@@ -1,5 +1,4 @@
 cd `dirname $0`
-cp template/* ./
-mv template/ .templates
+cp .template/* ./
 rm init.sh
 rm -rf .git
