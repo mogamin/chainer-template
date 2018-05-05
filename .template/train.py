@@ -1,15 +1,18 @@
 import chainer
 import chainer.links as L
 import chainer.functions as F
+from chainer import training
 from chainer.training import extensions
 
 from utils import load_cifar
 from models import archs
 from preprocess import PreprocessDataset, TestDataset
 
+import os
 import argparse
 import numpy as np
 import multiprocessing
+from datetime import datetime
 
 
 def argpars():
@@ -30,6 +33,7 @@ def main():
     print('EPOCH:', args.epoch)
     print('GPU:', args.gpu)
     print('CPU:', args.cpu)
+    print('TIMESTAMP:', timestamp)
     # -End of Set config-
 
     # =========================================================================
@@ -83,26 +87,50 @@ def main():
     trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'))
 
     # -Set trainer extensions-
-    trainer.extend(extensions.Evaluator(
-        val_iter, model), trigger=(1, 'epoch'))
+    # --Snapshot--
+    snapshot_name = 'snaptshot_{}'.format(timestamp)
+    snapshot_trigger = \
+        training.triggers.MinValueTrigger('main/loss', trigger=(1, 'epoch'))
+    trainer.extend(extensions.snapshot_object(
+        model.predictor, snapshot_name), trigger=snapshot_trigger)
+    # --End of Snapshot--
+    # --Evaluator--
+    trainer.extend(extensions.Evaluator(val_iter, model), trigger=(1, 'epoch'))
+    # --Report--
+    log_dir = 'logs'
+    log_name = 'log_{}'.format(timestamp)
+    log_name = os.path.join(log_dir, log_name)
     trainer.extend(extensions.LogReport(
         ['epoch',
          'main/accuracy',
          'validation/main/accuracy',
-         'elapsed_time']))
+         'elapsed_time'],
+        log_name=log_name))
     trainer.extend(extensions.PrintReport(
         ['epoch',
          'main/accuracy',
          'validation/main/accuracy',
          'elapsed_time']))
     trainer.extend(extensions.ProgressBar(update_interval=10))
+    # --End of Report--
     # -End of Set trainer extensions-
 
     # -Start learning-
     trainer.run()
 
+    # -Serialize model-
+    model.to_cpu()
+    model_name = '{}_{}.npz'.format(timestamp, args.net)
+    model_name = os.path.join('result', 'model_npzs', model_name)
+    chainer.serializers.save_npz(model_name, model.predictor)
+    # -End of Serialize model-
+
+    # -Rename snapshot-
+    os.rename('result/'+snapshot_name, 'result/snapshots/'+snapshot_name)
+
     return 0
 
 
 if __name__ == '__main__':
+    timestamp = datetime.today().strftime('%y%m%d%H%M%S')
     main()
