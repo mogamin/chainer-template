@@ -9,7 +9,7 @@ def randomcrop(img, sub=5):
     sub x sub times num of data
     '''
     height, width = img.shape[:2]
-    shorter = np.min(height, width)
+    shorter = np.min(img.shape[:2])
     cropsize = shorter - sub
     x_sub = width - cropsize
     y_sub = height - cropsize
@@ -45,13 +45,13 @@ def randomrotate(img):
 
 def centercrop(img):
     height, width = img.shape[:2]
-    cropsize = np.min(height, width)
+    cropsize = np.min(img.shape[:2])
     y = (height - cropsize) // 2
     x = (width - cropsize) // 2
     return img[y:y + cropsize, x:x + cropsize, :]
 
 
-def randomerase(img, prob=0.5, sh=0.4, sl=0.02, r1=0.3):
+def randomerase(img, max_intensity, prob=0.5, sh=0.4, sl=0.02, r1=0.3):
     if np.random.rand(1) < prob:
         height, width = img.shape[:2]
         S = height * width
@@ -65,7 +65,7 @@ def randomerase(img, prob=0.5, sh=0.4, sl=0.02, r1=0.3):
             y = np.random.randint(height)
             if (x + we) < width and (y + he) < height:
                 break
-        img[y: y + he, x: x + we, :] = np.random.randint(0, 255)
+        img[y: y + he, x: x + we, :] = np.random.randint(0, max_intensity)
         return img
     else:
         return img
@@ -97,12 +97,12 @@ class PreprocessDataset(chainer.dataset.DatasetMixin):
     def get_example(self, i):
         img = self.imgs[i]
         img = self.subtractmean(img)
-        img = randomerase(img, self.eraseprob)
+        img = randomerase(img, self.max_intensity, self.eraseprob)
         img = randomflip(img)
         img = randomrotate(img)
         img = randomcrop(img)
         img = cv2.resize(img, self.size, interpolation=cv2.INTER_LINEAR)
-        img = np.array(img).astype(np.float32) / self.max_intensity
+        img = xp.array(img).astype(xp.float32) / self.max_intensity
 
         return img.transpose(2, 0, 1)
 
@@ -114,6 +114,6 @@ class TestDataset(PreprocessDataset):
         img = self.subtractmean(img)
         img = centercrop(img)
         img = cv2.resize(img, self.size, interpolation=cv2.INTER_LINEAR)
-        img = np.array(img).astype(np.float32) / self.max_intensity
+        img = xp.array(img).astype(xp.float32) / self.max_intensity
 
         return img.transpose(2, 0, 1)

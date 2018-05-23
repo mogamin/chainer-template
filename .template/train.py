@@ -11,17 +11,18 @@ from preprocess import PreprocessDataset, TestDataset
 import os
 import argparse
 import numpy as np
-import multiprocessing
 from datetime import datetime
+
+xp = chainer.cuda.cupy
 
 
 def argpars():
     parser = argparse.ArgumentParser(description='config')
     parser.add_argument('-n', '--net', required=True)
     parser.add_argument('-g', '--gpu', type=int, default=-1)
-    parser.add_argument('-c', '--cpu', type=int, default=1)
     parser.add_argument('-b', '--batch', type=int, default=100)
     parser.add_argument('-e', '--epoch', type=int, default=20)
+    parser.add_argument('-s', '--size', type=int, default=32)
     return parser.parse_args()
 
 
@@ -31,8 +32,8 @@ def main():
     print('NETWORK:', args.net)
     print('BATCH SIZE:', args.batch)
     print('EPOCH:', args.epoch)
+    print('SIZE:', args.size)
     print('GPU:', args.gpu)
-    print('CPU:', args.cpu)
     print('TIMESTAMP:', timestamp)
     # -End of Set config-
 
@@ -51,18 +52,14 @@ def main():
 
     # -Select cupy or numpy-
     if args.gpu > -1:
-        xp = chainer.cuda.cupy
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
-        multiprocessing.set_start_method('spawn')
     else:
         xp = np
     # -End of Select cupy or numpy-
 
     # -Cast-
-    train_x = xp.array(train_x).astype(xp.float32)
     train_y = xp.array(train_y).astype(xp.int8)
-    val_x = xp.array(val_x).astype(xp.float32)
     val_y = xp.array(val_y).astype(xp.int8)
 
     # -Set optimizer -
@@ -70,14 +67,14 @@ def main():
     optimizer.setup(model)
 
     # -Preprocessing-
-    train = chainer.datasets.TupleDataset(PreprocessDataset(train_x), train_y)
-    val = chainer.datasets.TupleDataset(TestDataset(val_x), val_y)
+    train = chainer.datasets.TupleDataset(PreprocessDataset(train_x, args.size), train_y)
+    val = chainer.datasets.TupleDataset(TestDataset(val_x, args.size), val_y)
 
     # -Set iterators-
-    train_iter = chainer.iterators.MultiprocessIterator(
-        train, args.batch, n_processes=args.cpu)
-    val_iter = chainer.iterators.MultiprocessIterator(
-        val, args.batch, repeat=False, shuffle=False, n_processes=1)
+    train_iter = chainer.iterators.SerialIterator(
+        train, args.batch)
+    val_iter = chainer.iterators.SerialIterator(
+        val, args.batch, repeat=False, shuffle=False)
 
     # -Set Updater-
     updater = chainer.training.updaters.StandardUpdater(
