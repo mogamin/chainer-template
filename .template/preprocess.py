@@ -34,14 +34,14 @@ def randomrotate(img):
 
 
 def centercrop(img, cropsize=28):
-    x = (img.shape[0] - cropsize)/2
-    y = (img.shape[1] - cropsize)/2
+    y = (img.shape[0] - cropsize) // 2
+    x = (img.shape[1] - cropsize) // 2
     return img[y:y + cropsize, x:x + cropsize, :]
 
 
 def randomerase(img, prob=0.5, sh=0.4, sl=0.02, r1=0.3):
     if np.random.rand(1) < prob:
-        height, width = img.shape[: 2]
+        height, width = img.shape[:2]
         S = height * width
         r2 = 1 / r1
         while True:
