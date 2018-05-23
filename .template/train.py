@@ -126,7 +126,7 @@ def main():
     # -End of Serialize model-
 
     # -Rename snapshot-
-    os.rename('result/'+snapshot_name, 'result/snapshots/'+snapshot_name)
+    os.rename('result/' + snapshot_name, 'result/snapshots/' + snapshot_name)
 
     return 0
 

@@ -43,7 +43,7 @@ class VGG(chainer.ChainList):
         super(VGG, self).__init__()
         # set conv layers
         for n_conv, out_ch, drop_ratio in n_blocks:
-            for _ in range(n_conv-1):
+            for _ in range(n_conv - 1):
                 self.add_link(ConvBlock(out_ch, drop_ratio))
             self.add_link(ConvBlock(out_ch, pool=True))
 

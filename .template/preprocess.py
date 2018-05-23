@@ -3,19 +3,19 @@ import numpy as np
 xp = chainer.cuda.cupy
 
 
-def randomcrop(img, cropsize=28):
+def randomcrop(img, cropsize):
     sub = img.shape[0] - cropsize
     x, y = np.random.randint(0, sub, 2)
     return img[y:y + cropsize, x:x + cropsize, :]
 
 
 def randomflip(img):
-    p = np.random.randint(3)
+    p = np.random.randint(4)
     if p == 0:
         img = img[:, ::-1, :]
     elif p == 1:
         img = img[::-1, :, :]
-    elif p == 3:
+    elif p == 2:
         img = img[::-1, ::-1, :]
 
     return img
@@ -33,7 +33,7 @@ def randomrotate(img):
     return img
 
 
-def centercrop(img, cropsize=28):
+def centercrop(img, cropsize):
     y = (img.shape[0] - cropsize) // 2
     x = (img.shape[1] - cropsize) // 2
     return img[y:y + cropsize, x:x + cropsize, :]
@@ -60,10 +60,11 @@ def randomerase(img, prob=0.5, sh=0.4, sl=0.02, r1=0.3):
 
 
 class PreprocessDataset(chainer.dataset.DatasetMixin):
-    def __init__(self, imgs, eraseprob=0.5):
+    def __init__(self, imgs, cropsize, eraseprob=0.5):
         self.imgs = imgs
         self.mean = np.mean(imgs, axis=0)
         self.eraseprob = eraseprob
+        self.cropsize = cropsize
 
     def __len__(self):
         return len(self.imgs)
@@ -77,7 +78,7 @@ class PreprocessDataset(chainer.dataset.DatasetMixin):
         img = randomerase(img, self.eraseprob)
         img = randomflip(img)
         img = randomrotate(img)
-        img = randomcrop(img)
+        img = randomcrop(img, self.cropsize)
 
         return img.transpose(2, 0, 1)
 
@@ -86,6 +87,6 @@ class TestDataset(PreprocessDataset):
     def get_example(self, i):
         img = self.imgs[i]
         img = self.subtractmean(img)
-        img = centercrop(img)
+        img = centercrop(img, self.cropsize)
 
         return img.transpose(2, 0, 1)
